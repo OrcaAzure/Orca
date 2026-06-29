@@ -18,6 +18,7 @@ import com.orca.app.ui.components.OrcaChipRow
 import com.orca.app.ui.components.OrcaTextField
 import com.orca.app.ui.components.ResultCard
 import com.orca.app.ui.components.ResultRow
+import com.orca.app.ui.common.ToolUiState
 import com.orca.app.ui.components.ToolScaffold
 
 @Composable
@@ -64,7 +65,11 @@ fun DnsScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        OrcaButton(text = "Lookup", onClick = viewModel::lookup)
+        OrcaButton(
+            text = "Lookup",
+            onClick = viewModel::lookup,
+            enabled = uiState !is ToolUiState.Loading,
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
 

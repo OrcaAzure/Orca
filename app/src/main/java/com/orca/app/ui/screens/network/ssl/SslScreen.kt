@@ -22,6 +22,7 @@ import com.orca.app.ui.components.OrcaButton
 import com.orca.app.ui.components.OrcaTextField
 import com.orca.app.ui.components.ResultCard
 import com.orca.app.ui.components.ResultRow
+import com.orca.app.ui.common.ToolUiState
 import com.orca.app.ui.components.ToolScaffold
 import com.orca.app.ui.theme.OrcaError
 import com.orca.app.ui.theme.OrcaSuccess
@@ -80,7 +81,11 @@ fun SslScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        OrcaButton(text = "Inspect Certificate", onClick = viewModel::inspect)
+        OrcaButton(
+            text = "Inspect Certificate",
+            onClick = viewModel::inspect,
+            enabled = uiState !is ToolUiState.Loading,
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
 

@@ -5,18 +5,20 @@ import androidx.lifecycle.viewModelScope
 import com.orca.app.data.network.DnsRecordType
 import com.orca.app.data.network.DnsRepository
 import com.orca.app.data.network.DnsResult
+import com.orca.app.ui.common.CancellableJob
 import com.orca.app.ui.common.ToolUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class DnsViewModel @Inject constructor(
     private val repository: DnsRepository,
 ) : ViewModel() {
+
+    private val requestJob = CancellableJob()
 
     val recordTypes = DnsRecordType.entries.map { it.label }
 
@@ -46,7 +48,7 @@ class DnsViewModel @Inject constructor(
 
         val type = DnsRecordType.entries.find { it.label == _recordType.value } ?: DnsRecordType.A
 
-        viewModelScope.launch {
+        requestJob.launch(viewModelScope, onCancel = { _uiState.value = ToolUiState.Idle }) {
             _uiState.value = ToolUiState.Loading
             repository.lookup(target, type)
                 .onSuccess { _uiState.value = ToolUiState.Success(it) }

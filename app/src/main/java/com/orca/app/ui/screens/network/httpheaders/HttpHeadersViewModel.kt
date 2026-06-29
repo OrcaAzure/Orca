@@ -4,18 +4,20 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.orca.app.data.network.HttpHeadersRepository
 import com.orca.app.data.network.HttpHeadersResult
+import com.orca.app.ui.common.CancellableJob
 import com.orca.app.ui.common.ToolUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class HttpHeadersViewModel @Inject constructor(
     private val repository: HttpHeadersRepository,
 ) : ViewModel() {
+
+    private val requestJob = CancellableJob()
 
     private val _uiState = MutableStateFlow<ToolUiState<HttpHeadersResult>>(ToolUiState.Idle)
     val uiState: StateFlow<ToolUiState<HttpHeadersResult>> = _uiState.asStateFlow()
@@ -34,7 +36,7 @@ class HttpHeadersViewModel @Inject constructor(
             return
         }
 
-        viewModelScope.launch {
+        requestJob.launch(viewModelScope, onCancel = { _uiState.value = ToolUiState.Idle }) {
             _uiState.value = ToolUiState.Loading
             repository.fetchHeaders(target)
                 .onSuccess { _uiState.value = ToolUiState.Success(it) }

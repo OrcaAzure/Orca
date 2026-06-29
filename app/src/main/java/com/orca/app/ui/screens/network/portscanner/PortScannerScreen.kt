@@ -5,8 +5,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,6 +24,7 @@ import com.orca.app.ui.components.OrcaButton
 import com.orca.app.ui.components.OrcaTextField
 import com.orca.app.ui.components.ResultCard
 import com.orca.app.ui.components.ResultRow
+import com.orca.app.ui.common.ToolUiState
 import com.orca.app.ui.components.ToolScaffold
 import com.orca.app.ui.theme.OrcaSuccess
 
@@ -36,6 +39,7 @@ fun PortScannerScreen(
     val useCommonPorts by viewModel.useCommonPorts.collectAsStateWithLifecycle()
     val timeoutMs by viewModel.timeoutMs.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val isLoading = uiState is ToolUiState.Loading
 
     ToolScaffold(title = "Port Scanner", onBack = onBack, modifier = modifier) {
         Text(
@@ -95,7 +99,20 @@ fun PortScannerScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        OrcaButton(text = "Scan", onClick = viewModel::scan)
+        Row(modifier = Modifier.fillMaxWidth()) {
+            OrcaButton(
+                text = "Scan",
+                onClick = viewModel::scan,
+                enabled = !isLoading,
+                modifier = Modifier.weight(1f),
+            )
+            if (isLoading) {
+                Spacer(modifier = Modifier.width(12.dp))
+                OutlinedButton(onClick = viewModel::cancelScan) {
+                    Text("Cancel")
+                }
+            }
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
 

@@ -50,39 +50,39 @@ class SslRepository @Inject constructor() {
             sslContext.init(null, trustAll, java.security.SecureRandom())
 
             val socket = sslContext.socketFactory.createSocket(trimmed, port) as SSLSocket
-            socket.soTimeout = 15_000
-            socket.startHandshake()
+            socket.use { s ->
+                s.soTimeout = 15_000
+                s.startHandshake()
 
-            val certs = socket.session.peerCertificates
-            socket.close()
+                val certs = s.session.peerCertificates
+                if (certs.isEmpty()) return@withContext Result.failure(Exception("No certificate found"))
 
-            if (certs.isEmpty()) return@withContext Result.failure(Exception("No certificate found"))
+                val cert = certs[0] as X509Certificate
+                val now = Date()
+                val notAfter = cert.notAfter
+                val daysUntil = (notAfter.time - now.time) / (1000 * 60 * 60 * 24)
 
-            val cert = certs[0] as X509Certificate
-            val now = Date()
-            val notAfter = cert.notAfter
-            val daysUntil = (notAfter.time - now.time) / (1000 * 60 * 60 * 24)
+                val sans = cert.subjectAlternativeNames?.mapNotNull { entry ->
+                    entry.getOrNull(1)?.toString()
+                } ?: emptyList()
 
-            val sans = cert.subjectAlternativeNames?.mapNotNull { entry ->
-                entry.getOrNull(1)?.toString()
-            } ?: emptyList()
-
-            Result.success(
-                SslCertificateResult(
-                    host = trimmed,
-                    port = port,
-                    subject = cert.subjectX500Principal.name,
-                    issuer = cert.issuerX500Principal.name,
-                    validFrom = dateFormat.format(cert.notBefore),
-                    validTo = dateFormat.format(notAfter),
-                    serialNumber = cert.serialNumber.toString(16).uppercase(),
-                    signatureAlgorithm = cert.sigAlgName,
-                    version = cert.version,
-                    subjectAltNames = sans,
-                    isExpired = notAfter.before(now),
-                    daysUntilExpiry = daysUntil,
-                ),
-            )
+                Result.success(
+                    SslCertificateResult(
+                        host = trimmed,
+                        port = port,
+                        subject = cert.subjectX500Principal.name,
+                        issuer = cert.issuerX500Principal.name,
+                        validFrom = dateFormat.format(cert.notBefore),
+                        validTo = dateFormat.format(notAfter),
+                        serialNumber = cert.serialNumber.toString(16).uppercase(),
+                        signatureAlgorithm = cert.sigAlgName,
+                        version = cert.version,
+                        subjectAltNames = sans,
+                        isExpired = notAfter.before(now),
+                        daysUntilExpiry = daysUntil,
+                    ),
+                )
+            }
         } catch (e: Exception) {
             Result.failure(Exception("SSL inspection failed: ${e.message ?: "Unknown error"}"))
         }

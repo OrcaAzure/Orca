@@ -47,7 +47,11 @@ fun OrcaNavGraph(
     modifier: Modifier = Modifier,
     startDestination: String = Routes.HOME,
 ) {
-    val navigateToTool: (String) -> Unit = { route -> navController.navigate(route) }
+    val navigateToTool: (String) -> Unit = { route ->
+        navController.navigate(route) {
+            launchSingleTop = true
+        }
+    }
     val goBack: () -> Unit = { navController.popBackStack() }
 
     NavHost(

@@ -17,6 +17,7 @@ import com.orca.app.ui.components.OrcaButton
 import com.orca.app.ui.components.OrcaTextField
 import com.orca.app.ui.components.ResultCard
 import com.orca.app.ui.components.ResultRow
+import com.orca.app.ui.common.ToolUiState
 import com.orca.app.ui.components.ToolScaffold
 
 @Composable
@@ -46,7 +47,11 @@ fun HttpHeadersScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        OrcaButton(text = "Fetch Headers", onClick = viewModel::fetch)
+        OrcaButton(
+            text = "Fetch Headers",
+            onClick = viewModel::fetch,
+            enabled = uiState !is ToolUiState.Loading,
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -62,8 +67,17 @@ fun HttpHeadersScreen(
 private fun HttpHeadersResultContent(result: HttpHeadersResult) {
     ResultCard {
         ResultRow("URL", result.url)
+        ResultRow("Method", result.requestMethod)
         ResultRow("Status", "${result.statusCode} ${result.statusMessage}")
         ResultRow("Response time", "${result.responseTimeMs} ms")
+
+        if (result.redirectChain.isNotEmpty()) {
+            ResultRow("Redirects", "${result.redirectChain.size}")
+            result.redirectChain.forEachIndexed { index, url ->
+                ResultRow("${index + 1}", url)
+            }
+        }
+
         ResultRow("Headers", "${result.headers.size} found")
 
         if (result.headers.isNotEmpty()) {

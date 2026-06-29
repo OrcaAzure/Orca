@@ -4,18 +4,20 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.orca.app.data.network.PortScanResult
 import com.orca.app.data.network.PortScannerRepository
+import com.orca.app.ui.common.CancellableJob
 import com.orca.app.ui.common.ToolUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class PortScannerViewModel @Inject constructor(
     private val repository: PortScannerRepository,
 ) : ViewModel() {
+
+    private val requestJob = CancellableJob()
 
     private val _uiState = MutableStateFlow<ToolUiState<PortScanResult>>(ToolUiState.Idle)
     val uiState: StateFlow<ToolUiState<PortScanResult>> = _uiState.asStateFlow()
@@ -58,17 +60,37 @@ class PortScannerViewModel @Inject constructor(
         val ports = if (_useCommonPorts.value) {
             repository.commonPorts
         } else {
-            repository.parsePorts(_customPorts.value).ifEmpty {
+            val parsed = parseCustomPorts(_customPorts.value)
+            if (parsed.isEmpty()) {
                 _uiState.value = ToolUiState.Error("Enter ports like: 80,443,8080")
                 return
             }
+            if (parsed.size > PortScannerRepository.MAX_PORTS) {
+                _uiState.value = ToolUiState.Error(
+                    "Maximum ${PortScannerRepository.MAX_PORTS} ports per scan",
+                )
+                return
+            }
+            parsed
         }
 
-        viewModelScope.launch {
+        requestJob.launch(viewModelScope, onCancel = { _uiState.value = ToolUiState.Idle }) {
             _uiState.value = ToolUiState.Loading
             repository.scan(target, ports, timeoutMs = _timeoutMs.value)
                 .onSuccess { _uiState.value = ToolUiState.Success(it) }
                 .onFailure { _uiState.value = ToolUiState.Error(it.message ?: "Scan failed") }
         }
+    }
+
+    fun cancelScan() {
+        requestJob.cancel()
+        _uiState.value = ToolUiState.Idle
+    }
+
+    private fun parseCustomPorts(input: String): List<Int> {
+        return input.split(",", " ", ";")
+            .mapNotNull { it.trim().toIntOrNull() }
+            .filter { it in 1..65535 }
+            .distinct()
     }
 }

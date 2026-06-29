@@ -1,14 +1,17 @@
 package com.orca.app.data.network
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import java.net.InetSocketAddress
 import java.net.Socket
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.coroutines.coroutineContext
 
 data class PortInfo(
     val port: Int,
@@ -42,6 +45,11 @@ class PortScannerRepository @Inject constructor() {
 
         val uniquePorts = ports.distinct().filter { it in 1..65535 }
         if (uniquePorts.isEmpty()) return@withContext Result.failure(IllegalArgumentException("No valid ports to scan"))
+        if (uniquePorts.size > MAX_PORTS) {
+            return@withContext Result.failure(
+                IllegalArgumentException("Maximum $MAX_PORTS ports per scan (got ${uniquePorts.size})"),
+            )
+        }
 
         try {
             val start = System.currentTimeMillis()
@@ -51,7 +59,10 @@ class PortScannerRepository @Inject constructor() {
 
             val openPorts = coroutineScope {
                 uniquePorts.map { port ->
-                    async { if (isPortOpen(trimmed, port, timeoutMs)) port else null }
+                    async {
+                        coroutineContext.ensureActive()
+                        if (isPortOpen(trimmed, port, timeoutMs)) port else null
+                    }
                 }.awaitAll().filterNotNull().sorted().map { PortInfo(it, serviceName(it)) }
             }
 
@@ -64,6 +75,8 @@ class PortScannerRepository @Inject constructor() {
                     durationMs = System.currentTimeMillis() - start,
                 ),
             )
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Result.failure(Exception("Scan failed: ${e.message ?: "Unknown error"}"))
         }
@@ -84,6 +97,8 @@ class PortScannerRepository @Inject constructor() {
         return input.split(",", " ", ";")
             .mapNotNull { it.trim().toIntOrNull() }
             .filter { it in 1..65535 }
+            .distinct()
+            .take(MAX_PORTS)
     }
 
     private fun serviceName(port: Int): String = when (port) {
@@ -106,5 +121,9 @@ class PortScannerRepository @Inject constructor() {
         8443 -> "HTTPS-Alt"
         27017 -> "MongoDB"
         else -> "Unknown"
+    }
+
+    companion object {
+        const val MAX_PORTS = 200
     }
 }

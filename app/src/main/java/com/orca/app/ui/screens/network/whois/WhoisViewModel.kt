@@ -4,18 +4,20 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.orca.app.data.network.WhoisRepository
 import com.orca.app.data.network.WhoisResult
+import com.orca.app.ui.common.CancellableJob
 import com.orca.app.ui.common.ToolUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class WhoisViewModel @Inject constructor(
     private val repository: WhoisRepository,
 ) : ViewModel() {
+
+    private val requestJob = CancellableJob()
 
     private val _uiState = MutableStateFlow<ToolUiState<WhoisResult>>(ToolUiState.Idle)
     val uiState: StateFlow<ToolUiState<WhoisResult>> = _uiState.asStateFlow()
@@ -34,7 +36,7 @@ class WhoisViewModel @Inject constructor(
             return
         }
 
-        viewModelScope.launch {
+        requestJob.launch(viewModelScope, onCancel = { _uiState.value = ToolUiState.Idle }) {
             _uiState.value = ToolUiState.Loading
             repository.lookup(target)
                 .onSuccess { _uiState.value = ToolUiState.Success(it) }

@@ -17,6 +17,7 @@ import com.orca.app.ui.components.OrcaButton
 import com.orca.app.ui.components.OrcaTextField
 import com.orca.app.ui.components.ResultCard
 import com.orca.app.ui.components.ResultRow
+import com.orca.app.ui.common.ToolUiState
 import com.orca.app.ui.components.ToolScaffold
 import com.orca.app.ui.theme.OrcaSuccess
 
@@ -47,7 +48,11 @@ fun PingScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        OrcaButton(text = "Ping", onClick = viewModel::ping)
+        OrcaButton(
+            text = "Ping",
+            onClick = viewModel::ping,
+            enabled = uiState !is ToolUiState.Loading,
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
 
