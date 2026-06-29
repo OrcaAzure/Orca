@@ -29,6 +29,9 @@ class PortScannerViewModel @Inject constructor(
     private val _useCommonPorts = MutableStateFlow(true)
     val useCommonPorts: StateFlow<Boolean> = _useCommonPorts.asStateFlow()
 
+    private val _timeoutMs = MutableStateFlow(2000)
+    val timeoutMs: StateFlow<Int> = _timeoutMs.asStateFlow()
+
     fun onHostChange(value: String) {
         _host.value = value
     }
@@ -39,6 +42,10 @@ class PortScannerViewModel @Inject constructor(
 
     fun onUseCommonPortsChange(value: Boolean) {
         _useCommonPorts.value = value
+    }
+
+    fun onTimeoutChange(value: Int) {
+        _timeoutMs.value = value
     }
 
     fun scan() {
@@ -59,7 +66,7 @@ class PortScannerViewModel @Inject constructor(
 
         viewModelScope.launch {
             _uiState.value = ToolUiState.Loading
-            repository.scan(target, ports)
+            repository.scan(target, ports, timeoutMs = _timeoutMs.value)
                 .onSuccess { _uiState.value = ToolUiState.Success(it) }
                 .onFailure { _uiState.value = ToolUiState.Error(it.message ?: "Scan failed") }
         }

@@ -41,18 +41,36 @@ class WhoisRepository @Inject constructor() {
         val domain = extractDomain(query)
         if (domain.isBlank()) return@withContext Result.failure(IllegalArgumentException("Enter a domain name"))
 
-        try {
-            val tld = domain.substringAfterLast('.', "")
-            val server = tldServers[tld.lowercase()] ?: "whois.iana.org"
-            val response = queryWhoisServer(server, domain)
-
-            Result.success(
+        // CTF-only TLDs have no public WHOIS
+        val tld = domain.substringAfterLast('.', "").lowercase()
+        if (tld in listOf("htb", "thm", "local", "internal", "corp")) {
+            return@withContext Result.success(
                 WhoisResult(
                     query = domain,
-                    server = server,
-                    response = response.trim(),
-                ),
+                    server = "n/a",
+                    response = "No public WHOIS available for .$tld domains.\n" +
+                        "This is a private/CTF-only TLD."
+                )
             )
+        }
+
+        try {
+            val primaryServer = tldServers[tld] ?: "whois.iana.org"
+            var response = queryWhoisServer(primaryServer, domain)
+
+            // Follow IANA referral if needed
+            if (primaryServer == "whois.iana.org") {
+                val referMatch = Regex("refer:\\s*(\\S+)", RegexOption.IGNORE_CASE).find(response)
+                val referServer = referMatch?.groupValues?.getOrNull(1)
+                if (referServer != null) {
+                    runCatching { response = queryWhoisServer(referServer, domain) }
+                    return@withContext Result.success(
+                        WhoisResult(query = domain, server = referServer, response = response.trim())
+                    )
+                }
+            }
+
+            Result.success(WhoisResult(query = domain, server = primaryServer, response = response.trim()))
         } catch (e: Exception) {
             Result.failure(Exception("WHOIS lookup failed: ${e.message ?: "Unknown error"}"))
         }

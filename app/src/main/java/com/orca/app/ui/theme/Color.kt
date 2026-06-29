@@ -31,3 +31,4 @@ val DeviceAccent = Color(0xFFFBBF24)
 // Semantic
 val OrcaError = Color(0xFFEF4444)
 val OrcaSuccess = Color(0xFF4ADE80)
+val OrcaWarning = Color(0xFFF59E0B)

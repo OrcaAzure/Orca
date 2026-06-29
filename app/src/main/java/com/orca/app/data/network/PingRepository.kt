@@ -31,32 +31,61 @@ class PingRepository @Inject constructor() {
                 InetAddress.getByName(trimmed).hostAddress
             }.getOrNull()
 
-            val process = ProcessBuilder()
-                .command("ping", "-c", count.toString(), "-W", "2", trimmed)
-                .redirectErrorStream(true)
-                .start()
+            // Try system ping binary first
+            val processResult = runCatching {
+                val process = ProcessBuilder()
+                    .command("ping", "-c", count.toString(), "-W", "2", trimmed)
+                    .redirectErrorStream(true)
+                    .start()
+                val output = process.inputStream.bufferedReader().readText()
+                val exitCode = process.waitFor()
+                Pair(output, exitCode)
+            }
 
-            val output = process.inputStream.bufferedReader().readText()
-            val exitCode = process.waitFor()
+            if (processResult.isSuccess) {
+                val (output, exitCode) = processResult.getOrThrow()
+                if (output.isNotBlank()) {
+                    val stats = parsePingStats(output)
+                    val transmitted = stats.transmitted ?: count
+                    val received = stats.received ?: if (exitCode == 0) count else 0
+                    val loss = if (transmitted > 0) ((transmitted - received) * 100 / transmitted) else 100
+                    return@withContext Result.success(
+                        PingResult(
+                            host = trimmed,
+                            resolvedIp = resolvedIp,
+                            packetsSent = transmitted,
+                            packetsReceived = received,
+                            packetLossPercent = loss,
+                            minRttMs = stats.minRtt,
+                            avgRttMs = stats.avgRtt,
+                            maxRttMs = stats.maxRtt,
+                            output = output.trim(),
+                            reachable = received > 0,
+                        )
+                    )
+                }
+            }
 
-            val stats = parsePingStats(output)
-            val transmitted = stats.transmitted ?: count
-            val received = stats.received ?: if (exitCode == 0) count else 0
-            val loss = if (transmitted > 0) ((transmitted - received) * 100 / transmitted) else 100
+            // Fallback: InetAddress.isReachable (TCP port 7 / system-dependent)
+            val start = System.currentTimeMillis()
+            val reachable = InetAddress.getByName(trimmed).isReachable(4000)
+            val elapsed = System.currentTimeMillis() - start
+            val fallbackNote = "System ping unavailable — TCP reachability used instead.\n" +
+                "Host ${if (reachable) "responded" else "did not respond"} in ${elapsed} ms."
 
             Result.success(
                 PingResult(
                     host = trimmed,
                     resolvedIp = resolvedIp,
-                    packetsSent = transmitted,
-                    packetsReceived = received,
-                    packetLossPercent = loss,
-                    minRttMs = stats.minRtt,
-                    avgRttMs = stats.avgRtt,
-                    maxRttMs = stats.maxRtt,
-                    output = output.trim(),
-                    reachable = received > 0,
-                ),
+                    packetsSent = count,
+                    packetsReceived = if (reachable) count else 0,
+                    packetLossPercent = if (reachable) 0 else 100,
+                    minRttMs = if (reachable) elapsed.toDouble() else null,
+                    avgRttMs = if (reachable) elapsed.toDouble() else null,
+                    maxRttMs = if (reachable) elapsed.toDouble() else null,
+                    output = fallbackNote,
+                    reachable = reachable,
+                )
             )
         } catch (e: Exception) {
             Result.failure(Exception("Ping failed: ${e.message ?: "Unknown error"}"))

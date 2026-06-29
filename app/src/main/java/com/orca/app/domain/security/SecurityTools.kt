@@ -2,7 +2,6 @@ package com.orca.app.domain.security
 
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
-import kotlin.random.Random
 
 object PasswordGenerator {
     private const val UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -26,7 +25,18 @@ object PasswordGenerator {
         }
         if (pool.isEmpty()) throw IllegalArgumentException("Select at least one character set")
 
-        return (1..length).map { pool[Random.nextInt(pool.length)] }.joinToString("")
+        val rng = java.security.SecureRandom()
+
+        // Guarantee at least one character from each enabled set
+        val mandatory = mutableListOf<Char>().apply {
+            if (includeUpper)   add(UPPER[rng.nextInt(UPPER.length)])
+            if (includeLower)   add(LOWER[rng.nextInt(LOWER.length)])
+            if (includeDigits)  add(DIGITS[rng.nextInt(DIGITS.length)])
+            if (includeSymbols) add(SYMBOLS[rng.nextInt(SYMBOLS.length)])
+        }
+
+        val remaining = (mandatory.size until length).map { pool[rng.nextInt(pool.length)] }
+        return (mandatory + remaining).shuffled(java.util.Random(rng.nextLong())).joinToString("")
     }
 }
 

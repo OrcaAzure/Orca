@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringSetPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -18,25 +18,32 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 class FavoritesRepository @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
-    private val favoritesKey = stringSetPreferencesKey("favorite_tool_ids")
+    private val favoritesKey = stringPreferencesKey("favorite_tool_ids_v2")
+
+    private fun String.toOrderedList(): List<String> =
+        split(",").map { it.trim() }.filter { it.isNotBlank() }
 
     val favorites: Flow<Set<String>> = context.dataStore.data.map { prefs ->
-        prefs[favoritesKey] ?: emptySet()
+        LinkedHashSet(prefs[favoritesKey]?.toOrderedList() ?: emptyList())
+    }
+
+    val favoritesOrdered: Flow<List<String>> = context.dataStore.data.map { prefs ->
+        prefs[favoritesKey]?.toOrderedList() ?: emptyList()
     }
 
     suspend fun toggle(toolId: String) {
         context.dataStore.edit { prefs ->
-            val current = prefs[favoritesKey]?.toMutableSet() ?: mutableSetOf()
+            val current = prefs[favoritesKey]?.toOrderedList()?.toMutableList() ?: mutableListOf()
             if (current.contains(toolId)) current.remove(toolId) else current.add(toolId)
-            prefs[favoritesKey] = current
+            prefs[favoritesKey] = current.joinToString(",")
         }
     }
 
     suspend fun remove(toolId: String) {
         context.dataStore.edit { prefs ->
-            val current = prefs[favoritesKey]?.toMutableSet() ?: mutableSetOf()
+            val current = prefs[favoritesKey]?.toOrderedList()?.toMutableList() ?: mutableListOf()
             current.remove(toolId)
-            prefs[favoritesKey] = current
+            prefs[favoritesKey] = current.joinToString(",")
         }
     }
 }

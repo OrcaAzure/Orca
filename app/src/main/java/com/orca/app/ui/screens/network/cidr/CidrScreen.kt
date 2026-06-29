@@ -64,8 +64,24 @@ private fun CidrResultContent(result: CidrResult) {
         ResultRow("CIDR", result.cidr)
         ResultRow("Network", result.networkAddress)
         ResultRow("Broadcast", result.broadcastAddress)
-        result.firstHost?.let { ResultRow("First host", it) }
-        result.lastHost?.let { ResultRow("Last host", it) }
+        ResultRow("First host", result.firstHost ?: when (result.prefixLength) {
+            0    -> "N/A (entire Internet)"
+            else -> "N/A"
+        })
+        ResultRow("Last host", result.lastHost ?: when (result.prefixLength) {
+            0    -> "N/A (entire Internet)"
+            else -> "N/A"
+        })
+        // Add a note for point-to-point and host routes
+        if (result.prefixLength >= 31) {
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = if (result.prefixLength == 32) "Host route — single address"
+                       else "Point-to-point link — no broadcast",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         ResultRow("Subnet mask", result.subnetMask)
         ResultRow("Wildcard mask", result.wildcardMask)
         ResultRow("Prefix", "/${result.prefixLength}")

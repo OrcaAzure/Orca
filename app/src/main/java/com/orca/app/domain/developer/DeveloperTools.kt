@@ -4,11 +4,26 @@ import android.util.Base64
 
 object Base64Tool {
     fun encode(input: String): String =
-        Base64.encodeToString(input.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
+        android.util.Base64.encodeToString(input.toByteArray(Charsets.UTF_8), android.util.Base64.NO_WRAP)
 
     fun decode(input: String): String {
-        val bytes = Base64.decode(input.trim(), Base64.DEFAULT)
-        return String(bytes, Charsets.UTF_8)
+        val bytes = android.util.Base64.decode(input.trim(), android.util.Base64.DEFAULT)
+        // Try UTF-8 first; fall back to hex dump for binary payloads
+        return try {
+            val decoded = bytes.toString(Charsets.UTF_8)
+            // Heuristic: if more than 20% of chars are control chars, treat as binary
+            val controlRatio = decoded.count { it.code < 32 && it != '\n' && it != '\r' && it != '\t' }
+                .toDouble() / decoded.length.coerceAtLeast(1)
+            if (controlRatio > 0.2) {
+                "[Binary output — hex dump]\n" + bytes.take(256).joinToString(" ") { "%02x".format(it) } +
+                    if (bytes.size > 256) "\n… (${bytes.size} bytes total)" else ""
+            } else {
+                decoded
+            }
+        } catch (_: Exception) {
+            "[Binary output — hex dump]\n" + bytes.take(256).joinToString(" ") { "%02x".format(it) } +
+                if (bytes.size > 256) "\n… (${bytes.size} bytes total)" else ""
+        }
     }
 }
 

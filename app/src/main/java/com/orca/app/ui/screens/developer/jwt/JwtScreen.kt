@@ -3,6 +3,9 @@ package com.orca.app.ui.screens.developer.jwt
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -92,12 +95,33 @@ private fun JwtResultContent(result: JwtDecodeResult) {
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Text(
-                text = result.signature.take(64) + if (result.signature.length > 64) "…" else "",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
+            androidx.compose.foundation.layout.Row(
                 modifier = Modifier.padding(top = 4.dp),
-            )
+                verticalAlignment = androidx.compose.ui.Alignment.Top,
+            ) {
+                androidx.compose.foundation.text.selection.SelectionContainer(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = result.signature,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                androidx.compose.material3.IconButton(
+                    onClick = {
+                        clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(result.signature))
+                    }
+                ) {
+                    androidx.compose.material3.Icon(
+                        imageVector = androidx.compose.material.icons.Icons.Default.ContentCopy,
+                        contentDescription = "Copy signature",
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
         }
     }
 }

@@ -2,10 +2,12 @@ package com.orca.app.ui.screens.network.portscanner
 
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -32,6 +34,7 @@ fun PortScannerScreen(
     val host by viewModel.host.collectAsStateWithLifecycle()
     val customPorts by viewModel.customPorts.collectAsStateWithLifecycle()
     val useCommonPorts by viewModel.useCommonPorts.collectAsStateWithLifecycle()
+    val timeoutMs by viewModel.timeoutMs.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     ToolScaffold(title = "Port Scanner", onBack = onBack, modifier = modifier) {
@@ -72,6 +75,23 @@ fun PortScannerScreen(
                 placeholder = "80,443,8080,9000",
             )
         }
+
+        Spacer(modifier = Modifier.height(12.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "Timeout: ${timeoutMs} ms",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Slider(
+            value = timeoutMs.toFloat(),
+            onValueChange = { viewModel.onTimeoutChange(it.toInt()) },
+            valueRange = 500f..5000f,
+            steps = 8,
+            modifier = Modifier.fillMaxWidth(),
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 

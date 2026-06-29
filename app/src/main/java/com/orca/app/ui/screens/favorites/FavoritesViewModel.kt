@@ -18,7 +18,7 @@ class FavoritesViewModel @Inject constructor(
     private val favoritesRepository: FavoritesRepository,
 ) : ViewModel() {
 
-    val favoriteTools: StateFlow<List<OrcaTool>> = favoritesRepository.favorites
+    val favoriteTools: StateFlow<List<OrcaTool>> = favoritesRepository.favoritesOrdered
         .map { ids -> ids.mapNotNull { ToolRegistry.findById(it) } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
